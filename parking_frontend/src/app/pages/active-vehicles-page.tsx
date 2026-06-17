@@ -1,30 +1,79 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
-import { mockVehicles } from "../lib/mock-data";
 import { formatPersianDate, formatDuration } from "../lib/utils";
-import { Search, Eye, DoorOpen, Filter } from "lucide-react";
+import { apiGet } from "../lib/api";
+import { Search, Eye, DoorOpen, Filter, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { toast } from "sonner";
+
+interface VehicleTraffic {
+  id: number;
+  plate_number: string;
+  entry_time: string;
+  entry_time_formatted: string;
+  tariff_details: {
+    name: string;
+    base_rate: string;
+    hourly_rate: string;
+  };
+  is_inside: boolean;
+}
+
+const SPOT_PLACEHOLDER = "—";
+const OPERATOR_PLACEHOLDER = "—";
 
 export function ActiveVehiclesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
+  const [activeVehicles, setActiveVehicles] = useState<VehicleTraffic[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const activeVehicles = mockVehicles.filter((v) => v.status === "active");
+  useEffect(() => {
+    apiGet<VehicleTraffic[]>("/api/active-vehicles/")
+      .then((data) => {
+        setActiveVehicles(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        toast.error("خطا در دریافت لیست خودروهای فعال");
+        setLoading(false);
+      });
+  }, []);
 
   const filteredVehicles = activeVehicles.filter((vehicle) => {
-    const matchesSearch = vehicle.licensePlate.includes(searchTerm) || vehicle.spotNumber.includes(searchTerm);
-    const matchesType = filterType === "all" || vehicle.vehicleType === filterType;
+    const vehicleType = vehicle.tariff_details?.name ?? "";
+    const matchesSearch =
+      vehicle.plate_number.includes(searchTerm) ||
+      SPOT_PLACEHOLDER.includes(searchTerm);
+    const matchesType = filterType === "all" || vehicleType === filterType;
     return matchesSearch && matchesType;
   });
 
-  const getDuration = (entryTime: Date) => {
-    const minutes = Math.floor((Date.now() - entryTime.getTime()) / 60000);
-    return formatDuration(minutes);
+  const getDuration = (entryTime: string) => {
+    const minutes = Math.floor((Date.now() - new Date(entryTime).getTime()) / 60000);
+    return formatDuration(Math.max(0, minutes));
   };
+
+  const formatEntryTime = (entryTime: string) => {
+    const parsed = new Date(entryTime);
+    if (Number.isNaN(parsed.getTime())) {
+      return entryTime;
+    }
+    return formatPersianDate(parsed);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center gap-2">
+        <Loader2 className="size-6 animate-spin text-primary" />
+        <span>در حال دریافت لیست خودروهای فعال...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -95,18 +144,18 @@ export function ActiveVehiclesPage() {
               ) : (
                 filteredVehicles.map((vehicle) => (
                   <TableRow key={vehicle.id}>
-                    <TableCell className="font-medium">{vehicle.licensePlate}</TableCell>
+                    <TableCell className="font-medium">{vehicle.plate_number}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{vehicle.vehicleType}</Badge>
+                      <Badge variant="outline">{vehicle.tariff_details?.name ?? "—"}</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {formatPersianDate(vehicle.entryTime)}
+                      {formatEntryTime(vehicle.entry_time)}
                     </TableCell>
-                    <TableCell className="font-medium">{getDuration(vehicle.entryTime)}</TableCell>
+                    <TableCell className="font-medium">{getDuration(vehicle.entry_time)}</TableCell>
                     <TableCell>
-                      <Badge>{vehicle.spotNumber}</Badge>
+                      <Badge>{SPOT_PLACEHOLDER}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm">{vehicle.operator}</TableCell>
+                    <TableCell className="text-sm">{OPERATOR_PLACEHOLDER}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="bg-success/10 text-success">
                         فعال
