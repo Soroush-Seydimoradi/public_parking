@@ -7,6 +7,7 @@ import { formatCurrency } from "../lib/utils";
 import { Car, Truck, Bike, Package, Save, Loader2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { toast } from "sonner";
+import { apiFetch, apiGet } from "../lib/api";
 
 const vehicleIcons = {
   "سواری": Car,
@@ -29,11 +30,7 @@ export function TariffsPage() {
   const [savingId, setSavingId] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/tariffs/")
-      .then((res) => {
-        if (!res.ok) throw new Error("خطا در دریافت اطلاعات");
-        return res.json();
-      })
+    apiGet<DjangoTariff[]>("/api/tariffs/")
       .then((data) => {
         setTariffs(data);
         setLoading(false);
@@ -52,9 +49,8 @@ export function TariffsPage() {
   const handleSave = async (tariff: DjangoTariff) => {
     setSavingId(tariff.id);
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/tariffs/", {
+      const response = await apiFetch("/api/tariffs/", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: tariff.id,
           base_rate: tariff.base_rate,

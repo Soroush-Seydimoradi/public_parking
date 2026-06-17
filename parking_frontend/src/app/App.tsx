@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
 import { DashboardLayout } from "./components/dashboard-layout";
+import { ProtectedRoute } from "./components/protected-route";
+import { AuthProvider } from "./context/auth-context";
 import { LoginPage } from "./pages/login-page";
 import { DashboardPage } from "./pages/dashboard-page";
 import { VehicleEntryPage } from "./pages/vehicle-entry-page";
@@ -14,31 +16,38 @@ import { ShiftsPage } from "./pages/shifts-page";
 import { ReportsPage } from "./pages/reports-page";
 import { SettingsPage } from "./pages/settings-page";
 
+function withDashboard(page: React.ReactNode) {
+  return (
+    <ProtectedRoute>
+      <DashboardLayout>{page}</DashboardLayout>
+    </ProtectedRoute>
+  );
+}
+
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Login Route */}
-          <Route path="/" element={<LoginPage />} />
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
 
-          {/* Dashboard Routes */}
-          <Route path="/dashboard" element={<DashboardLayout><DashboardPage /></DashboardLayout>} />
-          <Route path="/vehicle-entry" element={<DashboardLayout><VehicleEntryPage /></DashboardLayout>} />
-          <Route path="/vehicle-exit" element={<DashboardLayout><VehicleExitPage /></DashboardLayout>} />
-          <Route path="/active-vehicles" element={<DashboardLayout><ActiveVehiclesPage /></DashboardLayout>} />
-          <Route path="/parking-spots" element={<DashboardLayout><ParkingSpotsPage /></DashboardLayout>} />
-          <Route path="/users" element={<DashboardLayout><UsersPage /></DashboardLayout>} />
-          <Route path="/tariffs" element={<DashboardLayout><TariffsPage /></DashboardLayout>} />
-          <Route path="/shifts" element={<DashboardLayout><ShiftsPage /></DashboardLayout>} />
-          <Route path="/reports" element={<DashboardLayout><ReportsPage /></DashboardLayout>} />
-          <Route path="/settings" element={<DashboardLayout><SettingsPage /></DashboardLayout>} />
+            <Route path="/dashboard" element={withDashboard(<DashboardPage />)} />
+            <Route path="/vehicle-entry" element={withDashboard(<VehicleEntryPage />)} />
+            <Route path="/vehicle-exit" element={withDashboard(<VehicleExitPage />)} />
+            <Route path="/active-vehicles" element={withDashboard(<ActiveVehiclesPage />)} />
+            <Route path="/parking-spots" element={withDashboard(<ParkingSpotsPage />)} />
+            <Route path="/users" element={withDashboard(<UsersPage />)} />
+            <Route path="/tariffs" element={withDashboard(<TariffsPage />)} />
+            <Route path="/shifts" element={withDashboard(<ShiftsPage />)} />
+            <Route path="/reports" element={withDashboard(<ReportsPage />)} />
+            <Route path="/settings" element={withDashboard(<SettingsPage />)} />
 
-          {/* Catch all - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </BrowserRouter>
-      <Toaster richColors position="top-center" />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster richColors position="top-center" />
+      </AuthProvider>
     </ThemeProvider>
   );
 }

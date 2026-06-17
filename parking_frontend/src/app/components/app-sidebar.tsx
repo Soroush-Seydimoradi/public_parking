@@ -1,9 +1,10 @@
 import { Home, LogIn, LogOut, Car, DoorOpen, Users, CreditCard, Clock, BarChart3, Settings, ParkingSquare } from "lucide-react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
+import { useAuth } from "../context/auth-context";
 
 const navigation = [
   { name: "داشبورد", href: "/dashboard", icon: Home },
@@ -24,6 +25,17 @@ interface AppSidebarProps {
 
 export function AppSidebar({ isCollapsed = false }: AppSidebarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const displayName = user?.name || user?.username || "کاربر";
+  const displayRole = user?.role || (user?.is_active ? "کاربر سیستم" : "غیرفعال");
+  const avatar = user?.avatar || displayName.slice(0, 2);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/", { replace: true });
+  };
 
   return (
     <div className="flex h-full flex-col border-l border-border bg-card">
@@ -80,21 +92,21 @@ export function AppSidebar({ isCollapsed = false }: AppSidebarProps) {
             <>
               <div className="mb-2 flex items-center gap-2">
                 <div className="flex size-8 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                  ع ا
+                  {avatar}
                 </div>
                 <div className="flex-1 text-right">
-                  <p className="text-sm font-medium">علی احمدی</p>
-                  <p className="text-xs text-muted-foreground">مدیر سیستم</p>
+                  <p className="text-sm font-medium">{displayName}</p>
+                  <p className="text-xs text-muted-foreground">{displayRole}</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => window.location.href = "/"}>
+              <Button variant="outline" size="sm" className="w-full gap-2" onClick={handleLogout}>
                 <LogOut className="size-4" />
                 <span>خروج</span>
               </Button>
             </>
           )}
           {isCollapsed && (
-            <Button variant="outline" size="icon" onClick={() => window.location.href = "/"}>
+            <Button variant="outline" size="icon" onClick={handleLogout}>
               <LogOut className="size-4" />
             </Button>
           )}

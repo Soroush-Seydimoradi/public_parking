@@ -1,6 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from .permissions import IsManager
 from django.utils import timezone
 from django.db.models import Sum
 from .models import Tariff, VehicleTraffic
@@ -178,6 +180,8 @@ class EndShiftAPI(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class UserManagementAPI(APIView):
+    permission_classes = [IsAuthenticated, IsManager]
+
     # ۱. دریافت لیست کاربران
     def get(self, request):
         users = User.objects.all().select_related('profile').order_by('-id')
@@ -210,6 +214,8 @@ class UserManagementAPI(APIView):
         return Response({"success": "کاربر با موفقیت ایجاد شد"}, status=status.HTTP_201_CREATED)
 
 class UserDeleteAPI(APIView):
+    permission_classes = [IsAuthenticated, IsManager]
+
     # ۳. حذف کاربر
     def delete(self, request, pk):
         try:

@@ -5,6 +5,7 @@ import { Badge } from "../components/ui/badge";
 import { formatCurrency, formatPersianDate } from "../lib/utils";
 import { Clock, Play, Square, TrendingUp, Users, DollarSign, Car, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch, apiGet } from "../lib/api";
 
 interface DjangoShift {
   id: number;
@@ -23,11 +24,7 @@ export function ShiftsPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchShifts = () => {
-    fetch("http://127.0.0.1:8000/api/shifts/")
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
+    apiGet<DjangoShift[]>("/api/shifts/")
       .then((data) => {
         setShifts(Array.isArray(data) ? data : []);
         setLoading(false);
@@ -63,9 +60,9 @@ export function ShiftsPage() {
   const handleStartShift = async () => {
     setActionLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/shifts/start/", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "خطایی رخ داد");
+      const response = await apiFetch("/api/shifts/start/", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "خطایی رخ داد");
       
       toast.success("شیفت جدید شروع شد");
       fetchShifts();
@@ -79,9 +76,9 @@ export function ShiftsPage() {
   const handleEndShift = async () => {
     setActionLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/shifts/end/", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "خطایی رخ داد");
+      const response = await apiFetch("/api/shifts/end/", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "خطایی رخ داد");
 
       toast.success("شیفت فعلی به پایان رسید");
       fetchShifts();

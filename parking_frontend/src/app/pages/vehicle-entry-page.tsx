@@ -6,6 +6,7 @@ import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
 import { toast } from "sonner";
+import { apiFetch, apiGet } from "../lib/api";
 import { mockParkingSpots } from "../lib/mock-data";
 import { ParkingSpotCard } from "../components/parking-spot-card";
 import { Car, Clock, User, FileText, CheckCircle2, Loader2 } from "lucide-react";
@@ -32,11 +33,7 @@ export function VehicleEntryPage() {
 
   // ۱. گرفتن لیست تعرفه‌های زنده از جنگو هنگام باز شدن صفحه
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/tariffs/")
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
+    apiGet<TariffOption[]>("/api/tariffs/")
       .then((data) => {
         setTariffs(data);
         setLoadingTariffs(false);
@@ -59,14 +56,11 @@ export function VehicleEntryPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/vehicle-entry/", {
+      const response = await apiFetch("/api/vehicle-entry/", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           plate_number: licensePlate,
-          tariff: Number(selectedTariffId), // ارسال آیدی تعرفه به جنگو
+          tariff: Number(selectedTariffId),
         }),
       });
 

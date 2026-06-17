@@ -4,6 +4,7 @@ import { ParkingSpotCard } from "../components/parking-spot-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { apiGet } from "../lib/api";
 
 interface DjangoParkingSpot {
   id: number;
@@ -19,11 +20,7 @@ export function ParkingSpotsPage() {
 
   // دریافت اطلاعات زنده جایگاه‌ها از جنگو
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/parking-spots/")
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
+    apiGet<DjangoParkingSpot[]>("/api/parking-spots/")
       .then((data) => {
         setSpots(data);
         setLoading(false);

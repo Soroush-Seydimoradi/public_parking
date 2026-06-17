@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
@@ -7,23 +7,42 @@ import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
 import { ParkingSquare } from "lucide-react";
 import { motion } from "motion/react";
+import { toast } from "sonner";
+import { useAuth } from "../context/auth-context";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { login, isAuthenticated, isLoading } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    setIsLoading(false);
-    navigate("/dashboard");
+    try {
+      await login(username, password, rememberMe);
+      navigate("/dashboard");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "ورود به سیستم با خطا مواجه شد"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 via-background to-success/10" dir="rtl">
@@ -81,11 +100,11 @@ export function LoginPage() {
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username">نام کاربری</Label>
+              <Label htmlFor="username">شماره تماس / نام کاربری</Label>
               <Input
                 id="username"
                 type="text"
-                placeholder="نام کاربری خود را وارد کنید"
+                placeholder="شماره تماس یا نام کاربری خود را وارد کنید"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -108,7 +127,11 @@ export function LoginPage() {
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Checkbox id="remember" />
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                />
                 <Label htmlFor="remember" className="text-sm cursor-pointer">
                   مرا به خاطر بسپار
                 </Label>
@@ -121,9 +144,9 @@ export function LoginPage() {
             <Button
               type="submit"
               className="h-12 w-full text-base"
-              disabled={isLoading}
+              disabled={isSubmitting}
             >
-              {isLoading ? "در حال ورود..." : "ورود به سیستم"}
+              {isSubmitting ? "در حال ورود..." : "ورود به سیستم"}
             </Button>
           </form>
 

@@ -4,6 +4,7 @@ import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
 import { toast } from "sonner";
+import { apiFetch, apiGet } from "../lib/api";
 import { formatCurrency, formatDuration, formatPersianDate } from "../lib/utils";
 import { Search, Clock, DollarSign, Car, Printer, CheckCircle2, Loader2 } from "lucide-react";
 import { Separator } from "../components/ui/separator";
@@ -34,8 +35,7 @@ export function VehicleExitPage() {
 
   // ۱. دریافت لیست خودروهای داخل پارکینگ از جنگو
   const fetchActiveVehicles = () => {
-    fetch("http://127.0.0.1:8000/api/active-vehicles/")
-      .then((res) => res.json())
+    apiGet<VehicleTraffic[]>("/api/active-vehicles/")
       .then((data) => {
         setActiveVehicles(data);
         setLoadingList(false);
@@ -76,9 +76,8 @@ export function VehicleExitPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/vehicle-exit/", {
+      const response = await apiFetch("/api/vehicle-exit/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ traffic_id: foundVehicle.id }),
       });
 

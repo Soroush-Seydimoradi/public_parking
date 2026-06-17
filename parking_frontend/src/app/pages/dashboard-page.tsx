@@ -3,6 +3,7 @@ import { StatCard } from "../components/stat-card";
 import { Card } from "../components/ui/card";
 import { Car, ParkingSquare, TrendingUp, Users, DollarSign, Activity, Loader2 } from "lucide-react";
 import { formatCurrency } from "../lib/utils";
+import { apiGet } from "../lib/api";
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 // اینترفیس ساختار داده زنده داشبورد از جنگو
@@ -19,11 +20,7 @@ export function DashboardPage() {
 
   // ۱. دریافت اطلاعات زنده آماری از جنگو
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/dashboard-stats/")
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
+    apiGet<DashboardStats>("/api/dashboard-stats/")
       .then((data) => {
         setStats(data);
         setLoading(false);

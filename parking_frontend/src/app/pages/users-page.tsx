@@ -12,6 +12,7 @@ import { Switch } from "../components/ui/switch";
 import { formatPersianDate } from "../lib/utils";
 import { UserPlus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { apiDelete, apiFetch, apiGet } from "../lib/api";
 
 interface DjangoUser {
   id: number;
@@ -36,11 +37,7 @@ export function UsersPage() {
   const [submitLoading, setSubmitLoading] = useState(false);
 
   const fetchUsers = () => {
-    fetch("http://127.0.0.1:8000/api/users/")
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
+    apiGet<DjangoUser[]>("/api/users/")
       .then((data) => {
         setUsers(data);
         setLoading(false);
@@ -76,13 +73,12 @@ export function UsersPage() {
     }
     setSubmitLoading(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/users/", {
+      const response = await apiFetch("/api/users/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, phone, role, is_active: isActive }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "خطایی رخ داد");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "خطایی رخ داد");
 
       toast.success("کاربر جدید با موفقیت ذخیره شد");
       setIsDialogOpen(false);
@@ -101,10 +97,7 @@ export function UsersPage() {
   const handleDelete = async (id: number) => {
     if (!confirm("آیا از حذف این کاربر مطمئن هستید؟")) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/users/${id}/`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error();
+      await apiDelete(`/api/users/${id}/`);
       toast.success("کاربر با موفقیت حذف شد");
       fetchUsers();
     } catch {
