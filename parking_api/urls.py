@@ -7,6 +7,7 @@ from .views import (
     ActiveVehiclesAPI, 
     VehicleExitAPI, 
     DashboardStatsAPI,
+    DashboardChartsAPI,
     ParkingSpotsListAPI,
     ShiftListAPI,
     StartShiftAPI,
@@ -31,4 +32,5 @@ urlpatterns = [
     path('active-vehicles/', ActiveVehiclesAPI.as_view(), name='active-vehicles'),
     path('vehicle-exit/', VehicleExitAPI.as_view(), name='vehicle-exit'),
     path('dashboard-stats/', DashboardStatsAPI.as_view(), name='dashboard-stats'),
+    path('dashboard-charts/', DashboardChartsAPI.as_view(), name='dashboard-charts'),
 ]

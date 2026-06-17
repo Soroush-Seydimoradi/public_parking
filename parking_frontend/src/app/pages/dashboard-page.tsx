@@ -6,7 +6,6 @@ import { formatCurrency } from "../lib/utils";
 import { apiGet } from "../lib/api";
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-// اینترفیس ساختار داده زنده داشبورد از جنگو
 interface DashboardStats {
   total_spots: number;
   vehicles_inside: number;
@@ -14,65 +13,94 @@ interface DashboardStats {
   today_income: number;
 }
 
+interface RevenueChartItem {
+  name: string;
+  revenue: number;
+}
+
+interface VehicleTypeChartItem {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface TrafficChartItem {
+  hour: string;
+  entries: number;
+  exits: number;
+}
+
+interface OccupancyChartItem {
+  month: string;
+  rate: number;
+}
+
+interface DashboardCharts {
+  weekly_revenue: RevenueChartItem[];
+  vehicle_types: Array<{ name: string; value: number }>;
+  traffic_today: TrafficChartItem[];
+  occupancy_trend: OccupancyChartItem[];
+}
+
+const VEHICLE_TYPE_COLORS: Record<string, string> = {
+  "سواری": "#4f46e5",
+  "وانت": "#10b981",
+  "موتور": "#f59e0b",
+  "کامیون": "#ef4444",
+};
+
+const DEFAULT_CHART_COLOR = "#94a3b8";
+
+function formatPersianMonth(isoDate: string): string {
+  return new Intl.DateTimeFormat("fa-IR", {
+    month: "long",
+    calendar: "persian",
+  }).format(new Date(isoDate));
+}
+
+function withVehicleTypeColors(
+  items: Array<{ name: string; value: number }>
+): VehicleTypeChartItem[] {
+  return items.map((item) => ({
+    ...item,
+    color: VEHICLE_TYPE_COLORS[item.name] ?? DEFAULT_CHART_COLOR,
+  }));
+}
+
 export function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [charts, setCharts] = useState<DashboardCharts | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ۱. دریافت اطلاعات زنده آماری از جنگو
   useEffect(() => {
-    apiGet<DashboardStats>("/api/dashboard-stats/")
-      .then((data) => {
-        setStats(data);
+    Promise.all([
+      apiGet<DashboardStats>("/api/dashboard-stats/"),
+      apiGet<DashboardCharts>("/api/dashboard-charts/"),
+    ])
+      .then(([statsData, chartsData]) => {
+        setStats(statsData);
+        setCharts(chartsData);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Error loading dashboard stats:", err);
+        console.error("Error loading dashboard data:", err);
         setLoading(false);
       });
   }, []);
 
-  // مقادیر پیش‌فرض محاسباتی در صورت آماده نبودن دیتابیس
   const activeVehicles = stats ? stats.vehicles_inside : 0;
   const availableSpots = stats ? stats.available_spots : 0;
   const totalSpots = stats ? stats.total_spots : 40;
   const occupancyRate = totalSpots > 0 ? Math.round(((totalSpots - availableSpots) / totalSpots) * 100) : 0;
   const todayRevenue = stats ? Number(stats.today_income) : 0;
 
-  // داده‌های نمودارها (داده‌های پایه/Mock پایا تا تکمیل بخش گزارشات جنگو)
-  const revenueData = [
-    { name: "شنبه", revenue: 1200000 },
-    { name: "یکشنبه", revenue: 1800000 },
-    { name: "دوشنبه", revenue: 2100000 },
-    { name: "سه‌شنبه", revenue: 1950000 },
-    { name: "چهارشنبه", revenue: 2300000 },
-    { name: "پنجشنبه", revenue: 2700000 },
-    { name: "جمعه", revenue: todayRevenue > 0 ? todayRevenue : 2450000 },
-  ];
-
-  const vehicleTypeData = [
-    { name: "سواری", value: 65, color: "#4f46e5" },
-    { name: "وانت", value: 20, color: "#10b981" },
-    { name: "موتور", value: 10, color: "#f59e0b" },
-    { name: "کامیون", value: 5, color: "#ef4444" },
-  ];
-
-  const trafficData = [
-    { hour: "08:00", entries: 12, exits: 3 },
-    { hour: "10:00", entries: 18, exits: 8 },
-    { hour: "12:00", entries: 15, exits: 12 },
-    { hour: "14:00", entries: 22, exits: 15 },
-    { hour: "16:00", entries: 20, exits: 18 },
-    { hour: "18:00", entries: activeVehicles, exits: 24 }, // متصل به ظرفیت فعلی پارکینگ
-  ];
-
-  const occupancyData = [
-    { month: "فروردین", rate: 75 },
-    { month: "اردیبهشت", rate: 82 },
-    { month: "خرداد", rate: 78 },
-    { month: "تیر", rate: 85 },
-    { month: "مرداد", rate: 88 },
-    { month: "شهریور", rate: occupancyRate > 0 ? occupancyRate : 90 },
-  ];
+  const revenueData = charts?.weekly_revenue ?? [];
+  const vehicleTypeData = withVehicleTypeColors(charts?.vehicle_types ?? []);
+  const trafficData = charts?.traffic_today ?? [];
+  const occupancyData = (charts?.occupancy_trend ?? []).map((item) => ({
+    month: formatPersianMonth(item.month),
+    rate: item.rate,
+  }));
 
   if (loading) {
     return (
@@ -115,7 +143,7 @@ export function DashboardPage() {
         />
         <StatCard
           title="ورود امروز"
-          value={activeVehicles} // فرضی بر اساس ماشین‌های داخل
+          value={activeVehicles}
           icon={TrendingUp}
           iconClassName="bg-info/10 text-info"
         />

@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from .permissions import IsManager
 from django.utils import timezone
 from django.db.models import Sum
+from .dashboard_analytics import get_dashboard_charts
 from .models import Tariff, VehicleTraffic
 from .serializers import TariffSerializer, VehicleTrafficSerializer
 import decimal
@@ -103,6 +104,11 @@ class DashboardStatsAPI(APIView):
             "available_spots": available_spots,
             "today_income": today_income
         })
+
+
+class DashboardChartsAPI(APIView):
+    def get(self, request):
+        return Response(get_dashboard_charts(total_spots=40))
     
 class ParkingSpotsListAPI(APIView):
     def get(self, request):
