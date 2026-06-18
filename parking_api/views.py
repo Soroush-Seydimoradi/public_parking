@@ -3,12 +3,14 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .permissions import IsManager
+from django.db import transaction
 from django.utils import timezone
 from django.db.models import Sum
 from .dashboard_analytics import get_dashboard_charts
 from .report_analytics import get_reports, parse_iso_date
 from .models import Tariff, VehicleTraffic
 from .serializers import TariffSerializer, VehicleTrafficSerializer
+from .spot_services import SpotNotAvailableError, assign_spot_for_entry, release_parking_spot
 import decimal
 from .models import ParkingSpot
 from .serializers import ParkingSpotSerializer
@@ -40,16 +42,42 @@ class TariffListAPI(APIView):
 
 class VehicleEntryAPI(APIView):
     def post(self, request):
-        serializer = VehicleTrafficSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        parking_spot_id = request.data.get('parking_spot')
+        payload = request.data.copy()
+        payload.pop('parking_spot', None)
+
+        serializer = VehicleTrafficSerializer(data=payload)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        if not parking_spot_id:
+            return Response(
+                {"error": "انتخاب جایگاه پارکینگ الزامی است."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            with transaction.atomic():
+                traffic = serializer.save()
+                assign_spot_for_entry(traffic, int(parking_spot_id))
+        except ParkingSpot.DoesNotExist:
+            return Response({"error": "جایگاه پارکینگ یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+        except SpotNotAvailableError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except (TypeError, ValueError):
+            return Response({"error": "شناسه جایگاه پارکینگ نامعتبر است."}, status=status.HTTP_400_BAD_REQUEST)
+
+        traffic.refresh_from_db()
+        return Response(VehicleTrafficSerializer(traffic).data, status=status.HTTP_201_CREATED)
 
 # ۲. لیست خودروهایی که همین الان داخل پارکینگ هستند
 class ActiveVehiclesAPI(APIView):
     def get(self, request):
-        vehicles = VehicleTraffic.objects.filter(is_inside=True).order_by('-entry_time')
+        vehicles = (
+            VehicleTraffic.objects.filter(is_inside=True)
+            .select_related('tariff', 'parking_spot')
+            .order_by('-entry_time')
+        )
         return Response(VehicleTrafficSerializer(vehicles, many=True).data)
 
 # ۳. ثبت خروج خودرو و محاسبه هزینه
@@ -82,6 +110,7 @@ class VehicleExitAPI(APIView):
 
         traffic.is_inside = False
         traffic.save()
+        release_parking_spot(traffic)
 
         return Response(VehicleTrafficSerializer(traffic).data, status=status.HTTP_200_OK)
 
@@ -134,36 +163,22 @@ class ReportsAPI(APIView):
     
 class ParkingSpotsListAPI(APIView):
     def get(self, request):
-        # ۱. تعداد ماشین‌هایی که در حال حاضر داخل پارکینگ هستند را می‌شماریم
-        occupied_count = VehicleTraffic.objects.filter(is_inside=True).count()
-        
-        # ۲. فرض می‌کنیم ظرفیت کل پارکینگ شما ۵۰ جایگاه است (می‌توانی این عدد را تغییر دهی)
-        TOTAL_SPOTS = 50 
-        
-        # ۳. محاسبه تعداد جایگاه‌های آزاد
-        available_count = max(0, TOTAL_SPOTS - occupied_count)
-        
-        # ۴. ساختن لیست جایگاه‌ها به صورت داینامیک برای فرانت
+        spots = ParkingSpot.objects.order_by('spot_number')
+        active_plates = {
+            traffic.parking_spot_id: traffic.plate_number
+            for traffic in VehicleTraffic.objects.filter(
+                is_inside=True,
+                parking_spot__isnull=False,
+            ).select_related('parking_spot')
+        }
+
         spots_list = []
-        
-        # ابتدا جایگاه‌های اشغال شده را می‌سازیم
-        for i in range(1, occupied_count + 1):
-            spots_list.append({
-                "id": i,
-                "spot_number": f"P-{i:02d}",
-                "status": "occupied",
-                "floor": 1
-            })
-            
-        # سپس مابقی جایگاه‌ها را به عنوان آزاد پر می‌کنیم
-        for i in range(occupied_count + 1, TOTAL_SPOTS + 1):
-            spots_list.append({
-                "id": i,
-                "spot_number": f"P-{i:02d}",
-                "status": "available",
-                "floor": 1
-            })
-            
+        for spot in spots:
+            spot_data = ParkingSpotSerializer(spot).data
+            if spot.id in active_plates:
+                spot_data['license_plate'] = active_plates[spot.id]
+            spots_list.append(spot_data)
+
         return Response(spots_list)
     
 class ShiftListAPI(APIView):

@@ -15,6 +15,14 @@ class VehicleTraffic(models.Model):
     entry_time = models.DateTimeField(auto_now_add=True, verbose_name="زمان ورود")
     exit_time = models.DateTimeField(null=True, blank=True, verbose_name="زمان خروج")
     tariff = models.ForeignKey(Tariff, on_delete=models.PROTECT, verbose_name="تعرفه اعمال شده")
+    parking_spot = models.ForeignKey(
+        'ParkingSpot',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='vehicle_sessions',
+        verbose_name="جایگاه پارکینگ",
+    )
     total_cost = models.DecimalField(max_digits=12, decimal_places=0, default=0, verbose_name="هزینه نهایی")
     is_inside = models.BooleanField(default=True, verbose_name="داخل پارکینگ است؟")
 

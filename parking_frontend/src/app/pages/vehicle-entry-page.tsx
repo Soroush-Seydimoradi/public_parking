@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Textarea } from "../components/ui/textarea";
 import { toast } from "sonner";
 import { apiFetch, apiGet } from "../lib/api";
-import { mockParkingSpots } from "../lib/mock-data";
 import { ParkingSpotCard } from "../components/parking-spot-card";
+import type { ParkingSpot } from "../lib/mock-data";
 import { Car, Clock, User, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -17,21 +17,51 @@ interface TariffOption {
   name: string;
 }
 
+interface ApiParkingSpot {
+  id: number;
+  spot_number: string;
+  status: ParkingSpot["status"];
+  floor: number;
+  license_plate?: string;
+}
+
+function toParkingSpotCard(apiSpot: ApiParkingSpot): ParkingSpot {
+  return {
+    id: String(apiSpot.id),
+    number: apiSpot.spot_number,
+    status: apiSpot.status,
+    licensePlate: apiSpot.license_plate,
+  };
+}
+
 export function VehicleEntryPage() {
   const [licensePlate, setLicensePlate] = useState("");
-  const [selectedTariffId, setSelectedTariffId] = useState(""); // ذخیره آیدی تعرفه برای جنگو
+  const [selectedTariffId, setSelectedTariffId] = useState("");
   const [selectedSpot, setSelectedSpot] = useState("");
   const [notes, setNotes] = useState("");
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // استیت‌های مربوط به دریافت تعرفه‌ها از جنگو
   const [tariffs, setTariffs] = useState<TariffOption[]>([]);
   const [loadingTariffs, setLoadingTariffs] = useState(true);
+  const [parkingSpots, setParkingSpots] = useState<ParkingSpot[]>([]);
+  const [loadingSpots, setLoadingSpots] = useState(true);
 
-  const availableSpots = mockParkingSpots.filter((s) => s.status === "available");
+  const availableSpots = parkingSpots.filter((spot) => spot.status === "available");
 
-  // ۱. گرفتن لیست تعرفه‌های زنده از جنگو هنگام باز شدن صفحه
+  const fetchParkingSpots = useCallback(() => {
+    setLoadingSpots(true);
+    apiGet<ApiParkingSpot[]>("/api/parking-spots/")
+      .then((data) => {
+        setParkingSpots(data.map(toParkingSpotCard));
+        setLoadingSpots(false);
+      })
+      .catch(() => {
+        toast.error("خطا در دریافت لیست جایگاه‌های پارکینگ");
+        setLoadingSpots(false);
+      });
+  }, []);
+
   useEffect(() => {
     apiGet<TariffOption[]>("/api/tariffs/")
       .then((data) => {
@@ -42,14 +72,21 @@ export function VehicleEntryPage() {
         toast.error("خطا در دریافت لیست تعرفه‌ها از سرور");
         setLoadingTariffs(false);
       });
-  }, []);
 
-  // ۲. ارسال اطلاعات فرم ورود خودرو به جنگو
+    fetchParkingSpots();
+  }, [fetchParkingSpots]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!licensePlate || !selectedTariffId || !selectedSpot) {
       toast.error("لطفاً تمام فیلدهای الزامی را پر کنید");
+      return;
+    }
+
+    const selectedSpotRecord = parkingSpots.find((spot) => spot.number === selectedSpot);
+    if (!selectedSpotRecord) {
+      toast.error("جایگاه انتخاب‌شده معتبر نیست");
       return;
     }
 
@@ -61,16 +98,19 @@ export function VehicleEntryPage() {
         body: JSON.stringify({
           plate_number: licensePlate,
           tariff: Number(selectedTariffId),
+          parking_spot: Number(selectedSpotRecord.id),
         }),
       });
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error("خطا در ثبت اطلاعات در سرور");
+        throw new Error((data as { error?: string }).error ?? "خطا در ثبت اطلاعات در سرور");
       }
 
-      // نمایش انیمیشن موفقیت
       setShowSuccess(true);
       toast.success("خودرو با موفقیت در دیتابیس ثبت شد");
+      fetchParkingSpots();
 
       setTimeout(() => {
         setShowSuccess(false);
@@ -81,7 +121,9 @@ export function VehicleEntryPage() {
       }, 3000);
     } catch (error) {
       console.error(error);
-      toast.error("ثبت خودرو با خطا مواجه شد. اتصال سرور را بررسی کنید.");
+      toast.error(
+        error instanceof Error ? error.message : "ثبت خودرو با خطا مواجه شد. اتصال سرور را بررسی کنید."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -147,7 +189,7 @@ export function VehicleEntryPage() {
                 </Label>
                 <Select value={selectedSpot} onValueChange={setSelectedSpot} required>
                   <SelectTrigger className="h-12">
-                    <SelectValue placeholder="انتخاب کنید" />
+                    <SelectValue placeholder={loadingSpots ? "در حال بارگذاری..." : "انتخاب کنید"} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableSpots.slice(0, 20).map((spot) => (
@@ -210,7 +252,7 @@ export function VehicleEntryPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">ظرفیت کل</span>
-                <span className="font-semibold">{mockParkingSpots.length}</span>
+                <span className="font-semibold">{parkingSpots.length}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">زمان</span>

@@ -1,36 +1,44 @@
 from rest_framework import serializers
-from .models import Tariff, VehicleTraffic
-from .models import ParkingSpot
+
+from .models import ParkingSpot, Tariff, VehicleTraffic
 from .models import OperatorShift
 from django.contrib.auth.models import User
 from .models import UserProfile
+
 
 class TariffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tariff
         fields = '__all__'
 
+
+class ParkingSpotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ParkingSpot
+        fields = '__all__'
+
+
 class VehicleTrafficSerializer(serializers.ModelSerializer):
-    # این خط باعث می‌شود تمام جزییات تعرفه (مثل نام و قیمت‌ها) به صورت آبجکت تودرتو در فرانت لود شود
     tariff_details = TariffSerializer(source='tariff', read_only=True)
-    
-    # فرمت کردن زمان‌ها به زبان ساده برای نمایش راحت در ری‌آکت
+    parking_spot_details = ParkingSpotSerializer(source='parking_spot', read_only=True)
     entry_time_formatted = serializers.SerializerMethodField()
     exit_time_formatted = serializers.SerializerMethodField()
 
     class Meta:
         model = VehicleTraffic
         fields = [
-            'id', 
-            'plate_number', 
-            'entry_time', 
-            'exit_time', 
-            'entry_time_formatted', 
-            'exit_time_formatted', 
-            'tariff', 
-            'tariff_details', 
-            'total_cost', 
-            'is_inside'
+            'id',
+            'plate_number',
+            'entry_time',
+            'exit_time',
+            'entry_time_formatted',
+            'exit_time_formatted',
+            'tariff',
+            'tariff_details',
+            'parking_spot',
+            'parking_spot_details',
+            'total_cost',
+            'is_inside',
         ]
 
     def get_entry_time_formatted(self, obj):
@@ -39,10 +47,6 @@ class VehicleTrafficSerializer(serializers.ModelSerializer):
     def get_exit_time_formatted(self, obj):
         return obj.exit_time.strftime("%H:%M") if obj.exit_time else ""
 
-class ParkingSpotSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ParkingSpot
-        fields = '__all__'
 
 class OperatorShiftSerializer(serializers.ModelSerializer):
     operator_name = serializers.SerializerMethodField()
@@ -55,7 +59,8 @@ class OperatorShiftSerializer(serializers.ModelSerializer):
         if obj.operator:
             return obj.operator.get_full_name() or obj.operator.username
         return obj.operator_name_fallback
-    
+
+
 class UserListSerializer(serializers.ModelSerializer):
     role = serializers.CharField(source='profile.role', read_only=True)
     phone = serializers.CharField(source='profile.phone', read_only=True)

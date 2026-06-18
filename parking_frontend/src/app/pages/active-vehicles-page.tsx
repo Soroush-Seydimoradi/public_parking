@@ -20,10 +20,12 @@ interface VehicleTraffic {
     base_rate: string;
     hourly_rate: string;
   };
+  parking_spot_details?: {
+    spot_number: string;
+  } | null;
   is_inside: boolean;
 }
 
-const SPOT_PLACEHOLDER = "—";
 const OPERATOR_PLACEHOLDER = "—";
 
 export function ActiveVehiclesPage() {
@@ -46,9 +48,10 @@ export function ActiveVehiclesPage() {
 
   const filteredVehicles = activeVehicles.filter((vehicle) => {
     const vehicleType = vehicle.tariff_details?.name ?? "";
+    const spotNumber = vehicle.parking_spot_details?.spot_number ?? "";
     const matchesSearch =
       vehicle.plate_number.includes(searchTerm) ||
-      SPOT_PLACEHOLDER.includes(searchTerm);
+      spotNumber.includes(searchTerm);
     const matchesType = filterType === "all" || vehicleType === filterType;
     return matchesSearch && matchesType;
   });
@@ -153,7 +156,7 @@ export function ActiveVehiclesPage() {
                     </TableCell>
                     <TableCell className="font-medium">{getDuration(vehicle.entry_time)}</TableCell>
                     <TableCell>
-                      <Badge>{SPOT_PLACEHOLDER}</Badge>
+                      <Badge>{vehicle.parking_spot_details?.spot_number ?? "—"}</Badge>
                     </TableCell>
                     <TableCell className="text-sm">{OPERATOR_PLACEHOLDER}</TableCell>
                     <TableCell>
