@@ -6,6 +6,7 @@ from .permissions import IsManager
 from django.utils import timezone
 from django.db.models import Sum
 from .dashboard_analytics import get_dashboard_charts
+from .report_analytics import get_reports, parse_iso_date
 from .models import Tariff, VehicleTraffic
 from .serializers import TariffSerializer, VehicleTrafficSerializer
 import decimal
@@ -109,6 +110,27 @@ class DashboardStatsAPI(APIView):
 class DashboardChartsAPI(APIView):
     def get(self, request):
         return Response(get_dashboard_charts(total_spots=40))
+
+
+class ReportsAPI(APIView):
+    def get(self, request):
+        range_type = request.query_params.get("range", "week")
+        vehicle_type = request.query_params.get("vehicle_type", "all")
+
+        try:
+            start_date = parse_iso_date(request.query_params.get("start_date"))
+            end_date = parse_iso_date(request.query_params.get("end_date"))
+            data = get_reports(
+                range_type=range_type,
+                start_date=start_date,
+                end_date=end_date,
+                vehicle_type=vehicle_type,
+                total_spots=40,
+            )
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(data)
     
 class ParkingSpotsListAPI(APIView):
     def get(self, request):
