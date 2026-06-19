@@ -10,7 +10,7 @@ import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Switch } from "../components/ui/switch";
 import { formatPersianDate } from "../lib/utils";
-import { UserPlus, Trash2, Loader2 } from "lucide-react";
+import { UserPlus, Trash2, Loader2, Pencil, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { apiDelete, apiFetch, apiGet } from "../lib/api";
 
@@ -28,6 +28,7 @@ export function UsersPage() {
   const [users, setUsers] = useState<DjangoUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
 
   // فیلدهای فرم جدید
   const [name, setName] = useState("");
@@ -66,6 +67,36 @@ export function UsersPage() {
     }
   };
 
+  const resetForm = () => {
+    setName("");
+    setPhone("");
+    setRole("اپراتور");
+    setIsActive(true);
+    setEditingUserId(null);
+  };
+
+  const openCreateDialog = () => {
+    resetForm();
+    setIsDialogOpen(true);
+  };
+
+  const openEditDialog = (user: DjangoUser) => {
+    setEditingUserId(user.id);
+    setName(user.name);
+    setPhone(user.phone);
+    setRole(user.role);
+    setIsActive(user.is_active);
+    setIsDialogOpen(true);
+  };
+
+  const extractErrorMessage = (data: Record<string, unknown>) => {
+    if (typeof data.error === "string") return data.error;
+    const fieldErrors = Object.values(data).flatMap((value) =>
+      Array.isArray(value) ? value.map(String) : typeof value === "string" ? [value] : []
+    );
+    return fieldErrors[0] || "خطایی رخ داد";
+  };
+
   const handleSave = async () => {
     if (!name || !phone) {
       toast.error("لطفاً تمامی فیلدها را پر کنید");
@@ -73,24 +104,39 @@ export function UsersPage() {
     }
     setSubmitLoading(true);
     try {
-      const response = await apiFetch("/api/users/", {
-        method: "POST",
-        body: JSON.stringify({ name, phone, role, is_active: isActive }),
-      });
+      const payload = { name, phone, role, is_active: isActive };
+      const response = editingUserId
+        ? await apiFetch(`/api/users/${editingUserId}/`, {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          })
+        : await apiFetch("/api/users/", {
+            method: "POST",
+            body: JSON.stringify(payload),
+          });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "خطایی رخ داد");
+      if (!response.ok) throw new Error(extractErrorMessage(data));
 
-      toast.success("کاربر جدید با موفقیت ذخیره شد");
+      toast.success(editingUserId ? "کاربر با موفقیت ویرایش شد" : "کاربر جدید با موفقیت ذخیره شد");
       setIsDialogOpen(false);
-      // ریست کردن فرم
-      setName("");
-      setPhone("");
-      setRole("اپراتور");
+      resetForm();
       fetchUsers();
     } catch (err: any) {
       toast.error(err.message || "خطا در ذخیره کاربر");
     } finally {
       setSubmitLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (id: number) => {
+    if (!confirm("آیا از بازنشانی رمز عبور این کاربر مطمئن هستید؟")) return;
+    try {
+      const response = await apiFetch(`/api/users/${id}/reset-password/`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(extractErrorMessage(data));
+      toast.success(`رمز عبور بازنشانی شد: ${data.temporary_password}`);
+    } catch (err: any) {
+      toast.error(err.message || "خطا در بازنشانی رمز عبور");
     }
   };
 
@@ -122,16 +168,22 @@ export function UsersPage() {
           <p className="text-muted-foreground">{users.length} کاربر در سیستم</p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={openCreateDialog}>
               <UserPlus className="ml-2 size-4" />
               افزودن کاربر
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>افزودن کاربر جدید</DialogTitle>
+              <DialogTitle>{editingUserId ? "ویرایش کاربر" : "افزودن کاربر جدید"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -209,6 +261,12 @@ export function UsersPage() {
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(user)}>
+                      <Pencil className="size-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleResetPassword(user.id)}>
+                      <KeyRound className="size-4" />
+                    </Button>
                     <Button variant="ghost" size="sm" onClick={() => handleDelete(user.id)} className="text-destructive hover:bg-destructive/10">
                       <Trash2 className="size-4" />
                     </Button>

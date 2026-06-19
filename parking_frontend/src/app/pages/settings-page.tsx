@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -7,10 +8,54 @@ import { Separator } from "../components/ui/separator";
 import { Settings, Bell, Shield, Database, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { apiFetch } from "../lib/api";
 
 export function SettingsPage() {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   const handleSave = () => {
     toast.success("تنظیمات با موفقیت ذخیره شد");
+  };
+
+  const handlePasswordChange = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("لطفاً تمام فیلدهای رمز عبور را پر کنید");
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const response = await apiFetch("/api/auth/change-password/", {
+        method: "POST",
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+          confirm_password: confirmPassword,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message =
+          (data as { error?: string }).error ||
+          Object.values(data as Record<string, string[] | string>)
+            .flatMap((value) => (Array.isArray(value) ? value : [value]))
+            .find(Boolean) ||
+          "خطا در تغییر رمز عبور";
+        throw new Error(String(message));
+      }
+
+      toast.success("رمز عبور با موفقیت تغییر کرد");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err: any) {
+      toast.error(err.message || "خطا در تغییر رمز عبور");
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   return (
@@ -177,17 +222,32 @@ export function SettingsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="currentPassword">رمز عبور فعلی</Label>
-                <Input id="currentPassword" type="password" />
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="newPassword">رمز عبور جدید</Label>
-                <Input id="newPassword" type="password" />
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">تکرار رمز عبور جدید</Label>
-                <Input id="confirmPassword" type="password" />
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
               </div>
 
               <Separator />
@@ -212,7 +272,7 @@ export function SettingsPage() {
                 <Switch defaultChecked />
               </div>
 
-              <Button onClick={handleSave} className="w-full">
+              <Button onClick={handlePasswordChange} className="w-full" disabled={passwordLoading}>
                 ذخیره تغییرات
               </Button>
             </div>

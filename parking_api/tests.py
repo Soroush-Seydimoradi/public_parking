@@ -7,7 +7,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from parking_api.capacity import get_parking_capacity
-from parking_api.models import OperatorShift, ParkingSettings, ParkingSpot, Tariff, VehicleTraffic
+from parking_api.models import OperatorShift, ParkingSettings, ParkingSpot, Tariff, UserProfile, VehicleTraffic
 from parking_api.shift_services import get_shift_statistics
 from parking_api.views import VehicleEntryAPI
 
@@ -317,3 +317,160 @@ class ShiftStatisticsTests(APITestCase):
         self.assertEqual(self.shift.vehicles_entered, 2)
         self.assertEqual(self.shift.vehicles_exited, 1)
         self.assertEqual(self.shift.revenue, Decimal("50000"))
+
+
+class UserManagementTests(APITestCase):
+    def setUp(self):
+        self.manager = User.objects.create_user(
+            username="09120000000",
+            password="ManagerPass123!",
+            first_name="مدیر سیستم",
+            is_active=True,
+        )
+        UserProfile.objects.create(user=self.manager, phone="09120000000", role="مدیر")
+        self.client.force_authenticate(user=self.manager)
+        self.users_url = "/api/users/"
+
+    def _create_user(self, phone, name, role="اپراتور", is_active=True):
+        user = User.objects.create_user(
+            username=phone,
+            password="UserPass123!",
+            first_name=name,
+            is_active=is_active,
+        )
+        UserProfile.objects.create(user=user, phone=phone, role=role)
+        return user
+
+    def test_create_user_validates_phone_and_role(self):
+        invalid_phone = self.client.post(
+            self.users_url,
+            {"name": "کاربر تست", "phone": "123", "role": "اپراتور", "is_active": True},
+            format="json",
+        )
+        self.assertEqual(invalid_phone.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("phone", invalid_phone.data)
+
+        invalid_role = self.client.post(
+            self.users_url,
+            {"name": "کاربر تست", "phone": "09121112222", "role": "نقش نامعتبر", "is_active": True},
+            format="json",
+        )
+        self.assertEqual(invalid_role.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("role", invalid_role.data)
+
+    def test_create_user_success_preserves_response_format(self):
+        response = self.client.post(
+            self.users_url,
+            {"name": "علی احمدی", "phone": "09123334444", "role": "اپراتور", "is_active": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data, {"success": "کاربر با موفقیت ایجاد شد"})
+        created = User.objects.get(username="09123334444")
+        self.assertTrue(created.check_password("TemporaryPassword123!") is False)
+
+    def test_update_user_name_role_and_active_status(self):
+        user = self._create_user("09124445555", "کاربر اول", role="کاربر")
+
+        response = self.client.put(
+            f"{self.users_url}{user.id}/",
+            {"name": "کاربر ویرایش‌شده", "role": "اپراتور", "is_active": False},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["name"], "کاربر ویرایش‌شده")
+        self.assertEqual(response.data["role"], "اپراتور")
+        self.assertFalse(response.data["is_active"])
+
+        user.refresh_from_db()
+        self.assertEqual(user.first_name, "کاربر ویرایش‌شده")
+        self.assertFalse(user.is_active)
+        self.assertEqual(user.profile.role, "اپراتور")
+
+    def test_update_user_phone_changes_username(self):
+        user = self._create_user("09125556666", "کاربر دوم")
+
+        response = self.client.put(
+            f"{self.users_url}{user.id}/",
+            {"phone": "09126667777"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        user.refresh_from_db()
+        self.assertEqual(user.username, "09126667777")
+        self.assertEqual(user.profile.phone, "09126667777")
+
+    def test_cannot_delete_or_deactivate_self(self):
+        delete_response = self.client.delete(f"{self.users_url}{self.manager.id}/")
+        self.assertEqual(delete_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(delete_response.data["error"], "امکان حذف حساب کاربری خود وجود ندارد.")
+
+        deactivate_response = self.client.put(
+            f"{self.users_url}{self.manager.id}/",
+            {"is_active": False},
+            format="json",
+        )
+        self.assertEqual(deactivate_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(deactivate_response.data["error"], "امکان غیرفعال‌سازی حساب کاربری خود وجود ندارد.")
+
+    def test_cannot_remove_last_manager(self):
+        response = self.client.put(
+            f"{self.users_url}{self.manager.id}/",
+            {"role": "اپراتور"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["error"],
+            "امکان حذف یا غیرفعال‌سازی آخرین مدیر سیستم وجود ندارد.",
+        )
+
+    def test_reset_password_returns_temporary_password(self):
+        user = self._create_user("09127778888", "کاربر سوم")
+
+        response = self.client.post(f"{self.users_url}{user.id}/reset-password/", format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["success"], "رمز عبور کاربر با موفقیت بازنشانی شد.")
+        self.assertIn("temporary_password", response.data)
+        user.refresh_from_db()
+        self.assertTrue(user.check_password(response.data["temporary_password"]))
+
+    def test_change_password_requires_current_password(self):
+        self.client.force_authenticate(user=self._create_user("09128889999", "کاربر چهارم"))
+
+        response = self.client.post(
+            "/api/auth/change-password/",
+            {
+                "current_password": "WrongPass123!",
+                "new_password": "NewSecure123!",
+                "confirm_password": "NewSecure123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("current_password", response.data)
+
+    def test_change_password_success(self):
+        user = self._create_user("09129990000", "کاربر پنجم")
+        self.client.force_authenticate(user=user)
+
+        response = self.client.post(
+            "/api/auth/change-password/",
+            {
+                "current_password": "UserPass123!",
+                "new_password": "BrandNew123!",
+                "confirm_password": "BrandNew123!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["success"], "رمز عبور با موفقیت تغییر کرد.")
+        user.refresh_from_db()
+        self.assertTrue(user.check_password("BrandNew123!"))

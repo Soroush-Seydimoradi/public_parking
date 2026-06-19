@@ -25,6 +25,18 @@ from .serializers import OperatorShiftSerializer
 from django.contrib.auth.models import User
 from .models import UserProfile
 from .serializers import UserListSerializer
+from .user_serializers import (
+    ResetPasswordSerializer,
+    UserCreateSerializer,
+    UserUpdateSerializer,
+    generate_temporary_password,
+)
+from .user_services import (
+    LastManagerError,
+    apply_user_update,
+    get_manager_count,
+    user_is_active_manager,
+)
 
 # ۱. دریافت لیست تعرفه‌ها و ثبت ورود (قبلاً ساختی، اینجا کامل‌تر شده)
 class TariffListAPI(APIView):
@@ -244,45 +256,116 @@ class EndShiftAPI(APIView):
 class UserManagementAPI(APIView):
     permission_classes = [IsAuthenticated, IsManager]
 
-    # ۱. دریافت لیست کاربران
     def get(self, request):
         users = User.objects.all().select_related('profile').order_by('-id')
         serializer = UserListSerializer(users, many=True)
         return Response(serializer.data)
 
-    # ۲. ایجاد کاربر جدید
     def post(self, request):
-        data = request.data
-        username = data.get('phone') # از شماره تماس به عنوان نام کاربری استفاده می‌کنیم
-        
-        if User.objects.filter(username=username).exists():
-            return Response({"error": "کاربری با این شماره تماس قبلاً ثبت شده است."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # ساخت کاربر در جنگو
+        serializer = UserCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        temporary_password = generate_temporary_password()
         user = User.objects.create_user(
-            username=username,
-            password="TemporaryPassword123!", # پسورد موقت
-            first_name=data.get('name', ''),
-            is_active=data.get('is_active', True)
+            username=data["phone"],
+            password=temporary_password,
+            first_name=data["name"],
+            is_active=data["is_active"],
         )
-        
-        # ساخت پروفایل
         UserProfile.objects.create(
             user=user,
-            phone=data.get('phone'),
-            role=data.get('role', 'اپراتور')
+            phone=data["phone"],
+            role=data["role"],
         )
-        
+
         return Response({"success": "کاربر با موفقیت ایجاد شد"}, status=status.HTTP_201_CREATED)
 
-class UserDeleteAPI(APIView):
+
+class UserDetailAPI(APIView):
     permission_classes = [IsAuthenticated, IsManager]
 
-    # ۳. حذف کاربر
+    def _get_user(self, pk):
+        try:
+            return User.objects.select_related("profile").get(pk=pk)
+        except User.DoesNotExist:
+            return None
+
+    def get(self, request, pk):
+        user = self._get_user(pk)
+        if user is None:
+            return Response({"error": "کاربر یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(UserListSerializer(user).data)
+
+    def put(self, request, pk):
+        user = self._get_user(pk)
+        if user is None:
+            return Response({"error": "کاربر یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = UserUpdateSerializer(data=request.data, context={"user": user}, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.pk == request.user.pk and serializer.validated_data.get("is_active") is False:
+            return Response(
+                {"error": "امکان غیرفعال‌سازی حساب کاربری خود وجود ندارد."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = apply_user_update(user, serializer.validated_data)
+        except LastManagerError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = User.objects.select_related("profile").get(pk=user.pk)
+        return Response(UserListSerializer(user).data, status=status.HTTP_200_OK)
+
     def delete(self, request, pk):
+        user = self._get_user(pk)
+        if user is None:
+            return Response({"error": "کاربر یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.pk == request.user.pk:
+            return Response(
+                {"error": "امکان حذف حساب کاربری خود وجود ندارد."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if user_is_active_manager(user) and get_manager_count(exclude_user_id=user.pk) == 0:
+            return Response(
+                {"error": "امکان حذف آخرین مدیر سیستم وجود ندارد."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.delete()
+        return Response({"success": "کاربر با موفقیت حذف شد"}, status=status.HTTP_200_OK)
+
+
+class UserResetPasswordAPI(APIView):
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def post(self, request, pk):
         try:
             user = User.objects.get(pk=pk)
-            user.delete()
-            return Response({"success": "کاربر با موفقیت حذف شد"}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({"error": "کاربر یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = ResetPasswordSerializer(
+            data=request.data,
+            context={"user": user},
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        new_password = serializer.validated_data.get("new_password") or generate_temporary_password()
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+
+        return Response(
+            {
+                "success": "رمز عبور کاربر با موفقیت بازنشانی شد.",
+                "temporary_password": new_password,
+            },
+            status=status.HTTP_200_OK,
+        )

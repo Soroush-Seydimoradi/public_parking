@@ -7,6 +7,14 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .auth_serializers import CustomTokenObtainPairSerializer
 from .serializers import UserListSerializer
+from .user_serializers import (
+    ChangePasswordSerializer,
+    ResetPasswordSerializer,
+    UserCreateSerializer,
+    UserUpdateSerializer,
+    generate_temporary_password,
+)
+from .user_services import LastManagerError, apply_user_update
 
 
 class LoginAPI(TokenObtainPairView):
@@ -37,3 +45,16 @@ class MeAPI(APIView):
 
     def get(self, request):
         return Response(UserListSerializer(request.user).data)
+
+
+class ChangePasswordAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        request.user.set_password(serializer.validated_data["new_password"])
+        request.user.save(update_fields=["password"])
+        return Response({"success": "رمز عبور با موفقیت تغییر کرد."})

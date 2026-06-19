@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .auth_views import LoginAPI, LogoutAPI, MeAPI, RefreshAPI
+from .auth_views import ChangePasswordAPI, LoginAPI, LogoutAPI, MeAPI, RefreshAPI
 from .views import (
     TariffListAPI, 
     VehicleEntryAPI, 
@@ -14,16 +14,19 @@ from .views import (
     StartShiftAPI,
     EndShiftAPI,
     UserManagementAPI,
-    UserDeleteAPI
+    UserDetailAPI,
+    UserResetPasswordAPI,
 )
 
 urlpatterns = [
     path('auth/login/', LoginAPI.as_view(), name='auth-login'),
     path('auth/refresh/', RefreshAPI.as_view(), name='auth-refresh'),
     path('auth/logout/', LogoutAPI.as_view(), name='auth-logout'),
+    path('auth/change-password/', ChangePasswordAPI.as_view(), name='auth-change-password'),
     path('auth/me/', MeAPI.as_view(), name='auth-me'),
     path('users/', UserManagementAPI.as_view(), name='user-management'),
-    path('users/<int:pk>/', UserDeleteAPI.as_view(), name='user-delete'),
+    path('users/<int:pk>/reset-password/', UserResetPasswordAPI.as_view(), name='user-reset-password'),
+    path('users/<int:pk>/', UserDetailAPI.as_view(), name='user-detail'),
     path('shifts/', ShiftListAPI.as_view(), name='shift-list'),
     path('shifts/start/', StartShiftAPI.as_view(), name='start-shift'),
     path('shifts/end/', EndShiftAPI.as_view(), name='end-shift'),
