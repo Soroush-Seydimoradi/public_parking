@@ -16,6 +16,7 @@ from .views import (
     UserManagementAPI,
     UserDetailAPI,
     UserResetPasswordAPI,
+    SettingsAPI,
 )
 
 urlpatterns = [
@@ -27,7 +28,7 @@ urlpatterns = [
     path('users/', UserManagementAPI.as_view(), name='user-management'),
     path('users/<int:pk>/reset-password/', UserResetPasswordAPI.as_view(), name='user-reset-password'),
     path('users/<int:pk>/', UserDetailAPI.as_view(), name='user-detail'),
-    path('shifts/', ShiftListAPI.as_view(), name='shift-list'),
+    path('settings/', SettingsAPI.as_view(), name='settings'),
     path('shifts/start/', StartShiftAPI.as_view(), name='start-shift'),
     path('shifts/end/', EndShiftAPI.as_view(), name='end-shift'),
     path('parking-spots/', ParkingSpotsListAPI.as_view(), name='parking-spots'),

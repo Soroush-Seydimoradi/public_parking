@@ -474,3 +474,122 @@ class UserManagementTests(APITestCase):
         self.assertEqual(response.data["success"], "رمز عبور با موفقیت تغییر کرد.")
         user.refresh_from_db()
         self.assertTrue(user.check_password("BrandNew123!"))
+
+
+class SettingsPersistenceTests(APITestCase):
+    def setUp(self):
+        self.manager = User.objects.create_user(
+            username="09120000001",
+            password="ManagerPass123!",
+            first_name="مدیر",
+        )
+        UserProfile.objects.create(user=self.manager, phone="09120000001", role="مدیر")
+        self.operator = User.objects.create_user(
+            username="09120000002",
+            password="OperatorPass123!",
+            first_name="اپراتور",
+        )
+        UserProfile.objects.create(user=self.operator, phone="09120000002", role="اپراتور")
+        self.settings = ParkingSettings.get_instance()
+        self.settings_url = "/api/settings/"
+
+    def test_get_settings_returns_persisted_values(self):
+        self.settings.parking_name = "پارکینگ مرکزی"
+        self.settings.address = "اصفهان، خیابان چهارباغ"
+        self.settings.contact_phone = "031-12345678"
+        self.settings.total_capacity = 45
+        self.settings.notify_daily_revenue = True
+        self.settings.notification_email = "reports@example.com"
+        self.settings.save()
+
+        self.client.force_authenticate(user=self.operator)
+        response = self.client.get(self.settings_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["parking_name"], "پارکینگ مرکزی")
+        self.assertEqual(response.data["address"], "اصفهان، خیابان چهارباغ")
+        self.assertEqual(response.data["phone"], "031-12345678")
+        self.assertEqual(response.data["total_capacity"], 45)
+        self.assertTrue(response.data["notify_daily_revenue"])
+        self.assertEqual(response.data["notification_email"], "reports@example.com")
+
+    def test_manager_can_update_general_settings(self):
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.put(
+            self.settings_url,
+            {
+                "parking_name": "پارکینگ ولیعصر",
+                "address": "تهران، ولیعصر",
+                "phone": "021-99887766",
+                "total_capacity": 48,
+                "auto_dark_mode": False,
+                "show_help": False,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["parking_name"], "پارکینگ ولیعصر")
+        self.assertEqual(response.data["total_capacity"], 48)
+        self.assertFalse(response.data["auto_dark_mode"])
+
+        self.settings.refresh_from_db()
+        self.assertEqual(self.settings.parking_name, "پارکینگ ولیعصر")
+        self.assertEqual(self.settings.total_capacity, 48)
+
+    def test_manager_can_update_notification_settings(self):
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.put(
+            self.settings_url,
+            {
+                "notify_vehicle_entry": False,
+                "notify_vehicle_exit": False,
+                "notify_capacity_full": True,
+                "notify_daily_revenue": True,
+                "notification_email": "alerts@parking.ir",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["notify_vehicle_entry"])
+        self.assertTrue(response.data["notify_daily_revenue"])
+        self.assertEqual(response.data["notification_email"], "alerts@parking.ir")
+
+    def test_operator_cannot_update_settings(self):
+        self.client.force_authenticate(user=self.operator)
+        response = self.client.put(
+            self.settings_url,
+            {"parking_name": "نام غیرمجاز"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_capacity_cannot_be_lower_than_vehicles_inside(self):
+        tariff = Tariff.objects.create(name="سواری", base_rate=50000, hourly_rate=30000)
+        spot = ParkingSpot.objects.get(spot_number="A-1")
+        VehicleTraffic.objects.create(
+            plate_number="12 الف 999 ایران 99",
+            tariff=tariff,
+            parking_spot=spot,
+            is_inside=True,
+        )
+
+        self.client.force_authenticate(user=self.manager)
+        response = self.client.put(
+            self.settings_url,
+            {"total_capacity": 0},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("total_capacity", response.data)
+
+    def test_updated_capacity_is_used_by_dashboard(self):
+        self.client.force_authenticate(user=self.manager)
+        self.client.put(self.settings_url, {"total_capacity": 33}, format="json")
+
+        response = self.client.get("/api/dashboard-stats/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["total_spots"], 33)

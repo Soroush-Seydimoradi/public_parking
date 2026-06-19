@@ -67,9 +67,55 @@ class OperatorShift(models.Model):
         return f"شیفت {self.operator_name_fallback} - {self.get_status_display()}"
     
 class ParkingSettings(models.Model):
+    parking_name = models.CharField(
+        max_length=200,
+        default="پارکینگ هوشمند",
+        verbose_name="نام پارکینگ",
+    )
+    address = models.CharField(
+        max_length=500,
+        blank=True,
+        default="تهران، خیابان ولیعصر، پلاک 123",
+        verbose_name="آدرس",
+    )
+    contact_phone = models.CharField(
+        max_length=30,
+        blank=True,
+        default="021-12345678",
+        verbose_name="شماره تماس",
+    )
     total_capacity = models.PositiveIntegerField(
         default=50,
         verbose_name="ظرفیت کل پارکینگ",
+    )
+    auto_dark_mode = models.BooleanField(
+        default=True,
+        verbose_name="حالت تاریک خودکار",
+    )
+    show_help = models.BooleanField(
+        default=True,
+        verbose_name="نمایش راهنما",
+    )
+    notify_vehicle_entry = models.BooleanField(
+        default=True,
+        verbose_name="اعلان ورود خودرو",
+    )
+    notify_vehicle_exit = models.BooleanField(
+        default=True,
+        verbose_name="اعلان خروج خودرو",
+    )
+    notify_capacity_full = models.BooleanField(
+        default=True,
+        verbose_name="اعلان ظرفیت کامل",
+    )
+    notify_daily_revenue = models.BooleanField(
+        default=False,
+        verbose_name="اعلان درآمد روزانه",
+    )
+    notification_email = models.EmailField(
+        blank=True,
+        default="",
+        verbose_name="ایمیل گزارشات",
     )
 
     class Meta:
@@ -84,12 +130,16 @@ class ParkingSettings(models.Model):
         pass
 
     @classmethod
-    def get_capacity(cls) -> int:
+    def get_instance(cls) -> "ParkingSettings":
         settings, _ = cls.objects.get_or_create(pk=1)
-        return settings.total_capacity
+        return settings
+
+    @classmethod
+    def get_capacity(cls) -> int:
+        return cls.get_instance().total_capacity
 
     def __str__(self):
-        return f"ظرفیت پارکینگ: {self.total_capacity}"
+        return self.parking_name
 
 
 class UserProfile(models.Model):

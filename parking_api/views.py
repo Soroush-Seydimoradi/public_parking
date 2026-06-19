@@ -23,7 +23,7 @@ from .serializers import ParkingSpotSerializer
 from .models import OperatorShift
 from .serializers import OperatorShiftSerializer
 from django.contrib.auth.models import User
-from .models import UserProfile
+from .models import UserProfile, ParkingSettings
 from .serializers import UserListSerializer
 from .user_serializers import (
     ResetPasswordSerializer,
@@ -31,6 +31,8 @@ from .user_serializers import (
     UserUpdateSerializer,
     generate_temporary_password,
 )
+from .settings_serializers import ParkingSettingsUpdateSerializer
+from .settings_services import apply_settings_update, settings_to_response
 from .user_services import (
     LastManagerError,
     apply_user_update,
@@ -369,3 +371,43 @@ class UserResetPasswordAPI(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class SettingsAPI(APIView):
+    def get_permissions(self):
+        if self.request.method == "PUT":
+            return [IsAuthenticated(), IsManager()]
+        return [IsAuthenticated()]
+
+    def get(self, request):
+        settings = ParkingSettings.get_instance()
+        return Response(settings_to_response(settings))
+
+    def put(self, request):
+        settings = ParkingSettings.get_instance()
+        serializer = ParkingSettingsUpdateSerializer(data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        settings = apply_settings_update(settings, serializer.validated_data)
+        return Response(settings_to_response(settings), status=status.HTTP_200_OK)
+
+
+class SettingsAPI(APIView):
+    def get_permissions(self):
+        if self.request.method == "PUT":
+            return [IsAuthenticated(), IsManager()]
+        return [IsAuthenticated()]
+
+    def get(self, request):
+        settings = ParkingSettings.get_instance()
+        return Response(settings_to_response(settings))
+
+    def put(self, request):
+        settings = ParkingSettings.get_instance()
+        serializer = ParkingSettingsUpdateSerializer(data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        settings = apply_settings_update(settings, serializer.validated_data)
+        return Response(settings_to_response(settings), status=status.HTTP_200_OK)
