@@ -391,23 +391,3 @@ class SettingsAPI(APIView):
 
         settings = apply_settings_update(settings, serializer.validated_data)
         return Response(settings_to_response(settings), status=status.HTTP_200_OK)
-
-
-class SettingsAPI(APIView):
-    def get_permissions(self):
-        if self.request.method == "PUT":
-            return [IsAuthenticated(), IsManager()]
-        return [IsAuthenticated()]
-
-    def get(self, request):
-        settings = ParkingSettings.get_instance()
-        return Response(settings_to_response(settings))
-
-    def put(self, request):
-        settings = ParkingSettings.get_instance()
-        serializer = ParkingSettingsUpdateSerializer(data=request.data, partial=True)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        settings = apply_settings_update(settings, serializer.validated_data)
-        return Response(settings_to_response(settings), status=status.HTTP_200_OK)
