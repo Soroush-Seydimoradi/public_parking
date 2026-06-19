@@ -15,6 +15,7 @@ from .dashboard_analytics import get_dashboard_charts
 from .report_analytics import get_reports, parse_iso_date
 from .models import Tariff, VehicleTraffic
 from .serializers import TariffSerializer, VehicleTrafficSerializer
+from .shift_services import apply_shift_statistics
 from .spot_services import SpotNotAvailableError, assign_spot_for_entry, release_parking_spot
 import decimal
 from .models import ParkingSpot
@@ -236,16 +237,7 @@ class EndShiftAPI(APIView):
         except OperatorShift.DoesNotExist:
             return Response({"error": "هیچ شیفت فعالی برای پایان دادن یافت نشد."}, status=status.HTTP_404_NOT_FOUND)
         
-        active_shift.end_time = timezone.now()
-        active_shift.status = 'completed'
-        
-        # در دنیای واقعی این مقادیر از فیلتر ماشین‌های ثبت شده در این بازه زمانی محاسبه می‌شوند
-        # برای نمونه چند مقدار پیش‌فرض منطقی برای تست ست می‌کنیم:
-        active_shift.revenue = 450000
-        active_shift.vehicles_entered = 18
-        active_shift.vehicles_exited = 12
-        
-        active_shift.save()
+        active_shift = apply_shift_statistics(active_shift, timezone.now())
         serializer = OperatorShiftSerializer(active_shift)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
