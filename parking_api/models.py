@@ -66,6 +66,32 @@ class OperatorShift(models.Model):
     def __str__(self):
         return f"شیفت {self.operator_name_fallback} - {self.get_status_display()}"
     
+class ParkingSettings(models.Model):
+    total_capacity = models.PositiveIntegerField(
+        default=50,
+        verbose_name="ظرفیت کل پارکینگ",
+    )
+
+    class Meta:
+        verbose_name = "تنظیمات پارکینگ"
+        verbose_name_plural = "تنظیمات پارکینگ"
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        pass
+
+    @classmethod
+    def get_capacity(cls) -> int:
+        settings, _ = cls.objects.get_or_create(pk=1)
+        return settings.total_capacity
+
+    def __str__(self):
+        return f"ظرفیت پارکینگ: {self.total_capacity}"
+
+
 class UserProfile(models.Model):
     ROLE_CHOICES = [
         ('مدیر', 'مدیر'),

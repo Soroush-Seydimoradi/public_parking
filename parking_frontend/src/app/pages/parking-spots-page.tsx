@@ -13,16 +13,23 @@ interface DjangoParkingSpot {
   floor: number;
 }
 
+interface ParkingSpotsResponse {
+  total_capacity: number;
+  spots: DjangoParkingSpot[];
+}
+
 export function ParkingSpotsPage() {
   const [spots, setSpots] = useState<DjangoParkingSpot[]>([]);
+  const [totalCapacity, setTotalCapacity] = useState(0);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [loading, setLoading] = useState(true);
 
   // دریافت اطلاعات زنده جایگاه‌ها از جنگو
   useEffect(() => {
-    apiGet<DjangoParkingSpot[]>("/api/parking-spots/")
+    apiGet<ParkingSpotsResponse>("/api/parking-spots/")
       .then((data) => {
-        setSpots(data);
+        setSpots(data.spots);
+        setTotalCapacity(data.total_capacity);
         setLoading(false);
       })
       .catch(() => {
@@ -56,11 +63,24 @@ export function ParkingSpotsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">جایگاه‌های پارکینگ</h1>
-        <p className="text-muted-foreground">نمای کلی تمام جایگاه‌های پارکینگ (متصل به سرور)</p>
+        <p className="text-muted-foreground">
+          نمای کلی {totalCapacity} جایگاه پارکینگ (متصل به سرور)
+        </p>
       </div>
 
       {/* Status Overview */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">ظرفیت کل</p>
+              <p className="text-2xl font-bold">{totalCapacity}</p>
+            </div>
+            <div className="rounded-lg bg-primary/10 p-3">
+              <div className="size-8 rounded-full bg-primary"></div>
+            </div>
+          </div>
+        </Card>
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>

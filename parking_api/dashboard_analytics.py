@@ -5,9 +5,9 @@ from django.db.models import Count, Q, Sum
 from django.db.models.functions import ExtractHour, TruncDate
 from django.utils import timezone
 
+from .capacity import get_parking_capacity
 from .models import VehicleTraffic
 
-TOTAL_SPOTS = 40
 TRAFFIC_HOURS = [8, 10, 12, 14, 16, 18]
 
 WEEKDAY_NAMES = {
@@ -160,7 +160,9 @@ def get_occupancy_trend(today: date, total_spots: int) -> list[dict]:
     return trend
 
 
-def get_dashboard_charts(total_spots: int = TOTAL_SPOTS) -> dict:
+def get_dashboard_charts(total_spots: int | None = None) -> dict:
+    if total_spots is None:
+        total_spots = get_parking_capacity()
     today = timezone.localdate()
 
     return {

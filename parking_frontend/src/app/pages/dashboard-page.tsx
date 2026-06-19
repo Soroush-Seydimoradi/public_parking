@@ -90,8 +90,8 @@ export function DashboardPage() {
 
   const activeVehicles = stats ? stats.vehicles_inside : 0;
   const availableSpots = stats ? stats.available_spots : 0;
-  const totalSpots = stats ? stats.total_spots : 40;
-  const occupancyRate = totalSpots > 0 ? Math.round(((totalSpots - availableSpots) / totalSpots) * 100) : 0;
+  const totalSpots = stats ? stats.total_spots : 0;
+  const occupancyRate = totalSpots > 0 ? Math.round((activeVehicles / totalSpots) * 100) : 0;
   const todayRevenue = stats ? Number(stats.today_income) : 0;
 
   const revenueData = charts?.weekly_revenue ?? [];

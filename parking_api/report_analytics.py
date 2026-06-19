@@ -4,7 +4,7 @@ from django.db.models import Count, Q, Sum
 from django.db.models.functions import ExtractHour, TruncDate
 from django.utils import timezone
 
-from .dashboard_analytics import TOTAL_SPOTS
+from .capacity import get_parking_capacity
 from .models import VehicleTraffic
 
 OCCUPANCY_HOURS = [8, 10, 12, 14, 16, 18, 20, 22]
@@ -139,8 +139,10 @@ def get_occupancy_report(
     start: date,
     end: date,
     vehicle_type: str | None = None,
-    total_spots: int = TOTAL_SPOTS,
+    total_spots: int | None = None,
 ) -> dict:
+    if total_spots is None:
+        total_spots = get_parking_capacity()
     queryset = VehicleTraffic.objects.filter(entry_time__date__lte=end).filter(
         Q(exit_time__isnull=True) | Q(exit_time__date__gte=start)
     )
@@ -175,8 +177,10 @@ def get_reports(
     start_date: date | None = None,
     end_date: date | None = None,
     vehicle_type: str | None = None,
-    total_spots: int = TOTAL_SPOTS,
+    total_spots: int | None = None,
 ) -> dict:
+    if total_spots is None:
+        total_spots = get_parking_capacity()
     start, end = resolve_date_range(range_type, start_date, end_date)
 
     return {

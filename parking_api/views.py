@@ -6,6 +6,11 @@ from .permissions import IsManager
 from django.db import transaction
 from django.utils import timezone
 from django.db.models import Sum
+from .capacity import (
+    get_available_spot_count,
+    get_parking_capacity,
+    get_vehicles_inside_count,
+)
 from .dashboard_analytics import get_dashboard_charts
 from .report_analytics import get_reports, parse_iso_date
 from .models import Tariff, VehicleTraffic
@@ -42,6 +47,7 @@ class TariffListAPI(APIView):
 
 class VehicleEntryAPI(APIView):
     DUPLICATE_ACTIVE_PLATE_ERROR = "این خودرو با این پلاک در حال حاضر داخل پارکینگ است."
+    PARKING_AT_CAPACITY_ERROR = "ظرفیت پارکینگ تکمیل است."
 
     def post(self, request):
         parking_spot_id = request.data.get('parking_spot')
@@ -62,6 +68,12 @@ class VehicleEntryAPI(APIView):
 
         try:
             with transaction.atomic():
+                if VehicleTraffic.objects.select_for_update().filter(is_inside=True).count() >= get_parking_capacity():
+                    return Response(
+                        {"error": self.PARKING_AT_CAPACITY_ERROR},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
                 if VehicleTraffic.objects.select_for_update().filter(
                     plate_number=plate_number,
                     is_inside=True,
@@ -130,14 +142,14 @@ class VehicleExitAPI(APIView):
 # ۴. دریافت آمارهای زنده کل پارکینگ برای داشبورد
 class DashboardStatsAPI(APIView):
     def get(self, request):
-        total_spots = 40  # فرض می‌کنیم ظرفیت کل پارکینگ ۴۰ تاست
-        vehicles_inside = VehicleTraffic.objects.filter(is_inside=True).count()
-        available_spots = max(0, total_spots - vehicles_inside)
-        
+        total_spots = get_parking_capacity()
+        vehicles_inside = get_vehicles_inside_count()
+        available_spots = get_available_spot_count()
+
         # محاسبه درآمد امروز
         today = timezone.now().date()
         today_income = VehicleTraffic.objects.filter(
-            exit_time__date=today, 
+            exit_time__date=today,
             is_inside=False
         ).aggregate(Sum('total_cost'))['total_cost__sum'] or 0.0
 
@@ -151,7 +163,7 @@ class DashboardStatsAPI(APIView):
 
 class DashboardChartsAPI(APIView):
     def get(self, request):
-        return Response(get_dashboard_charts(total_spots=40))
+        return Response(get_dashboard_charts())
 
 
 class ReportsAPI(APIView):
@@ -167,7 +179,6 @@ class ReportsAPI(APIView):
                 start_date=start_date,
                 end_date=end_date,
                 vehicle_type=vehicle_type,
-                total_spots=40,
             )
         except ValueError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -192,7 +203,10 @@ class ParkingSpotsListAPI(APIView):
                 spot_data['license_plate'] = active_plates[spot.id]
             spots_list.append(spot_data)
 
-        return Response(spots_list)
+        return Response({
+            "total_capacity": get_parking_capacity(),
+            "spots": spots_list,
+        })
     
 class ShiftListAPI(APIView):
     # دریافت لیست تمام شیفت‌ها (هم فعال و هم تمام شده)

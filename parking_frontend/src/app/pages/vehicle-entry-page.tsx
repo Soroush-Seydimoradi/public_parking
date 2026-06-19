@@ -25,6 +25,11 @@ interface ApiParkingSpot {
   license_plate?: string;
 }
 
+interface ApiParkingSpotsResponse {
+  total_capacity: number;
+  spots: ApiParkingSpot[];
+}
+
 function toParkingSpotCard(apiSpot: ApiParkingSpot): ParkingSpot {
   return {
     id: String(apiSpot.id),
@@ -51,9 +56,9 @@ export function VehicleEntryPage() {
 
   const fetchParkingSpots = useCallback(() => {
     setLoadingSpots(true);
-    apiGet<ApiParkingSpot[]>("/api/parking-spots/")
+    apiGet<ApiParkingSpotsResponse>("/api/parking-spots/")
       .then((data) => {
-        setParkingSpots(data.map(toParkingSpotCard));
+        setParkingSpots(data.spots.map(toParkingSpotCard));
         setLoadingSpots(false);
       })
       .catch(() => {
