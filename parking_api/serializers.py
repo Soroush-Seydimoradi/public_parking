@@ -41,6 +41,12 @@ class VehicleTrafficSerializer(serializers.ModelSerializer):
             'is_inside',
         ]
 
+    def validate_plate_number(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("پلاک خودرو الزامی است.")
+        return value
+
     def get_entry_time_formatted(self, obj):
         return obj.entry_time.strftime("%H:%M") if obj.entry_time else ""
 

@@ -41,6 +41,8 @@ class TariffListAPI(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class VehicleEntryAPI(APIView):
+    DUPLICATE_ACTIVE_PLATE_ERROR = "این خودرو با این پلاک در حال حاضر داخل پارکینگ است."
+
     def post(self, request):
         parking_spot_id = request.data.get('parking_spot')
         payload = request.data.copy()
@@ -56,8 +58,19 @@ class VehicleEntryAPI(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        plate_number = serializer.validated_data['plate_number']
+
         try:
             with transaction.atomic():
+                if VehicleTraffic.objects.select_for_update().filter(
+                    plate_number=plate_number,
+                    is_inside=True,
+                ).exists():
+                    return Response(
+                        {"error": self.DUPLICATE_ACTIVE_PLATE_ERROR},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
                 traffic = serializer.save()
                 assign_spot_for_entry(traffic, int(parking_spot_id))
         except ParkingSpot.DoesNotExist:
