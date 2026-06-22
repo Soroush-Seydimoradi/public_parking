@@ -19,7 +19,6 @@ db.sqlite3-journal
 local_settings.py
 staticfiles/
 media/
-*.db
 
 # Environment
 .env
@@ -39,6 +38,9 @@ htmlcov/
 .ruff_cache/
 
 # IDE & OS
+.cursor/
+.cursorignore
+.cursorindexingignore
 .vscode/
 .idea/
 *.swp
@@ -47,3 +49,5 @@ htmlcov/
 Thumbs.db
 desktop.ini
 
+# Project specific
+PROJECT_CONTEXT.md
