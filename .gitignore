@@ -19,6 +19,7 @@ db.sqlite3-journal
 local_settings.py
 staticfiles/
 media/
+*.db
 
 # Environment
 .env
@@ -45,3 +46,4 @@ htmlcov/
 .DS_Store
 Thumbs.db
 desktop.ini
+
