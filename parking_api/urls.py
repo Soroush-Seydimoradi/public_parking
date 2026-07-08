@@ -29,6 +29,7 @@ urlpatterns = [
     path('users/<int:pk>/reset-password/', UserResetPasswordAPI.as_view(), name='user-reset-password'),
     path('users/<int:pk>/', UserDetailAPI.as_view(), name='user-detail'),
     path('settings/', SettingsAPI.as_view(), name='settings'),
+    path('shifts/', ShiftListAPI.as_view(), name='shift-list'),
     path('shifts/start/', StartShiftAPI.as_view(), name='start-shift'),
     path('shifts/end/', EndShiftAPI.as_view(), name='end-shift'),
     path('parking-spots/', ParkingSpotsListAPI.as_view(), name='parking-spots'),
