@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone as datetime_timezone
 from decimal import Decimal
 
 from django.utils import timezone
@@ -84,3 +84,16 @@ class VehicleExitTests(ParkingAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["id"], inside.id)
+
+    def test_active_vehicles_formats_entry_time_in_local_timezone(self):
+        entry_time = datetime(2025, 1, 1, 12, 0, tzinfo=datetime_timezone.utc)
+        traffic = self._create_inside_vehicle(
+            "12 الف 777 ایران 77",
+            entry_time=entry_time,
+        )
+
+        response = self.client.get("/api/active-vehicles/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]["id"], traffic.id)
+        self.assertEqual(response.data[0]["entry_time_formatted"], "15:30")
