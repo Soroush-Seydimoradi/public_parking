@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
 import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
-import { Button } from "../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Badge } from "../components/ui/badge";
 import { formatPersianDate, formatDuration } from "../lib/utils";
 import { apiGet } from "../lib/api";
-import { Search, Eye, DoorOpen, Filter, Loader2 } from "lucide-react";
+import { Search, Filter, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { toast } from "sonner";
 
@@ -15,6 +14,7 @@ interface VehicleTraffic {
   plate_number: string;
   entry_time: string;
   entry_time_formatted: string;
+  entry_operator_username: string | null;
   tariff_details: {
     name: string;
     base_rate: string;
@@ -25,8 +25,6 @@ interface VehicleTraffic {
   } | null;
   is_inside: boolean;
 }
-
-const OPERATOR_PLACEHOLDER = "—";
 
 export function ActiveVehiclesPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -134,13 +132,12 @@ export function ActiveVehiclesPage() {
                 <TableHead className="text-right">جایگاه</TableHead>
                 <TableHead className="text-right">اپراتور</TableHead>
                 <TableHead className="text-right">وضعیت</TableHead>
-                <TableHead className="text-right">عملیات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredVehicles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                     خودرویی یافت نشد
                   </TableCell>
                 </TableRow>
@@ -158,21 +155,11 @@ export function ActiveVehiclesPage() {
                     <TableCell>
                       <Badge>{vehicle.parking_spot_details?.spot_number ?? "—"}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm">{OPERATOR_PLACEHOLDER}</TableCell>
+                    <TableCell className="text-sm">{vehicle.entry_operator_username ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant="secondary" className="bg-success/10 text-success">
                         فعال
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="size-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <DoorOpen className="size-4" />
-                        </Button>
-                      </div>
                     </TableCell>
                   </TableRow>
                 ))
