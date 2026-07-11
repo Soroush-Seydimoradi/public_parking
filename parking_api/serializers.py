@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 
 from .models import ParkingSpot, Tariff, VehicleTraffic
 from .models import OperatorShift
@@ -9,13 +10,13 @@ from .models import UserProfile
 class TariffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tariff
-        fields = '__all__'
+        fields = 'all'
 
 
 class ParkingSpotSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParkingSpot
-        fields = '__all__'
+        fields = 'all'
 
 
 class VehicleTrafficSerializer(serializers.ModelSerializer):
@@ -48,10 +49,10 @@ class VehicleTrafficSerializer(serializers.ModelSerializer):
         return value
 
     def get_entry_time_formatted(self, obj):
-        return obj.entry_time.strftime("%H:%M") if obj.entry_time else ""
+        return timezone.localtime(obj.entry_time).strftime("%H:%M") if obj.entry_time else ""
 
     def get_exit_time_formatted(self, obj):
-        return obj.exit_time.strftime("%H:%M") if obj.exit_time else ""
+        return timezone.localtime(obj.exit_time).strftime("%H:%M") if obj.exit_time else ""
 
 
 class OperatorShiftSerializer(serializers.ModelSerializer):
@@ -59,7 +60,7 @@ class OperatorShiftSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OperatorShift
-        fields = '__all__'
+        fields = 'all'
 
     def get_operator_name(self, obj):
         if obj.operator:
