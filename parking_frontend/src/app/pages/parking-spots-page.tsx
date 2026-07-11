@@ -1,4 +1,4 @@
-[7/11/2026 12:39 PM] Soroush Seydimoradi: import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "../components/ui/card";
 import { ParkingSpotCard } from "../components/parking-spot-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -111,8 +111,7 @@ export function ParkingSpotsPage() {
           <TabsTrigger value="all">همه ({statusCounts.all})</TabsTrigger>
           <TabsTrigger value="available">آزاد ({statusCounts.available})</TabsTrigger>
           <TabsTrigger value="occupied">اشغال ({statusCounts.occupied})</TabsTrigger>
-        </TabsList>
-[7/11/2026 12:39 PM] Soroush Seydimoradi: 
+        </TabsList> 
 
         <TabsContent value={filterStatus} className="mt-6">
           <Card className="p-6">
