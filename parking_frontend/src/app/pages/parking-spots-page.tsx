@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+[7/11/2026 12:39 PM] Soroush Seydimoradi: import { useState, useEffect } from "react";
 import { Card } from "../components/ui/card";
 import { ParkingSpotCard } from "../components/parking-spot-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -46,8 +46,6 @@ export function ParkingSpotsPage() {
     all: spots.length,
     available: spots.filter((s) => s.status === "available").length,
     occupied: spots.filter((s) => s.status === "occupied").length,
-    reserved: spots.filter((s) => s.status === "reserved").length,
-    disabled: spots.filter((s) => s.status === "disabled").length,
   };
 
   if (loading) {
@@ -69,7 +67,7 @@ export function ParkingSpotsPage() {
       </div>
 
       {/* Status Overview */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -105,40 +103,16 @@ export function ParkingSpotsPage() {
           </div>
         </Card>
 
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">رزرو</p>
-              <p className="text-2xl font-bold text-warning">{statusCounts.reserved}</p>
-            </div>
-            <div className="rounded-lg bg-warning/10 p-3">
-              <div className="size-8 rounded-full bg-warning"></div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">غیرفعال</p>
-              <p className="text-2xl font-bold text-muted-foreground">{statusCounts.disabled}</p>
-            </div>
-            <div className="rounded-lg bg-muted p-3">
-              <div className="size-8 rounded-full bg-border"></div>
-            </div>
-          </div>
-        </Card>
       </div>
 
       {/* Filter Tabs */}
       <Tabs value={filterStatus} onValueChange={setFilterStatus} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">همه ({statusCounts.all})</TabsTrigger>
           <TabsTrigger value="available">آزاد ({statusCounts.available})</TabsTrigger>
           <TabsTrigger value="occupied">اشغال ({statusCounts.occupied})</TabsTrigger>
-          <TabsTrigger value="reserved">رزرو ({statusCounts.reserved})</TabsTrigger>
-          <TabsTrigger value="disabled">غیرفعال ({statusCounts.disabled})</TabsTrigger>
         </TabsList>
+[7/11/2026 12:39 PM] Soroush Seydimoradi: 
 
         <TabsContent value={filterStatus} className="mt-6">
           <Card className="p-6">
