@@ -10,13 +10,13 @@ from .models import UserProfile
 class TariffSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tariff
-        fields = 'all'
+        fields = '__all__'
 
 
 class ParkingSpotSerializer(serializers.ModelSerializer):
     class Meta:
         model = ParkingSpot
-        fields = 'all'
+        fields = '__all__'
 
 
 class VehicleTrafficSerializer(serializers.ModelSerializer):
@@ -60,7 +60,7 @@ class OperatorShiftSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OperatorShift
-        fields = 'all'
+        fields = '__all__'
 
     def get_operator_name(self, obj):
         if obj.operator:
