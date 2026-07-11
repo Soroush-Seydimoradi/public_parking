@@ -4,7 +4,6 @@ import { Card } from "../components/ui/card";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Label } from "../components/ui/label";
-import { Checkbox } from "../components/ui/checkbox";
 import { ParkingSquare } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
@@ -15,7 +14,6 @@ export function LoginPage() {
   const { login, isAuthenticated, isLoading } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -29,7 +27,7 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login(username, password, rememberMe);
+      await login(username, password, false);
       navigate("/dashboard");
     } catch (error) {
       toast.error(
@@ -123,22 +121,6 @@ export function LoginPage() {
                 required
                 className="h-12"
               />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked === true)}
-                />
-                <Label htmlFor="remember" className="text-sm cursor-pointer">
-                  مرا به خاطر بسپار
-                </Label>
-              </div>
-              <Button variant="link" className="p-0 h-auto text-sm">
-                فراموشی رمز عبور
-              </Button>
             </div>
 
             <Button

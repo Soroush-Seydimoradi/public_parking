@@ -1,6 +1,5 @@
-import { Search, Bell, Moon, Sun, Menu } from "lucide-react";
+import { Moon, Sun, Menu } from "lucide-react";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import { useTheme } from "next-themes";
 import { useState, useEffect } from "react";
 
@@ -39,15 +38,6 @@ export function AppTopbar({ onMenuClick }: AppTopbarProps) {
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
             <Menu className="size-5" />
           </Button>
-
-          <div className="relative hidden md:block">
-            <Search className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="جستجو..."
-              className="w-64 pl-4 pr-10"
-            />
-          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -57,15 +47,6 @@ export function AppTopbar({ onMenuClick }: AppTopbarProps) {
           </div>
 
           <div className="h-8 w-px bg-border" />
-
-          <div className="rounded-lg bg-success/10 px-3 py-1">
-            <p className="text-xs text-success">شیفت فعال</p>
-          </div>
-
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="size-5" />
-            <span className="absolute left-2 top-2 flex size-2 rounded-full bg-destructive" />
-          </Button>
 
           <Button
             variant="ghost"
