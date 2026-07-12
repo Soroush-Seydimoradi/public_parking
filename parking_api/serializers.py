@@ -1,3 +1,5 @@
+import re
+
 from rest_framework import serializers
 from django.utils import timezone
 
@@ -5,6 +7,13 @@ from .models import ParkingSpot, Tariff, VehicleTraffic
 from .models import OperatorShift
 from django.contrib.auth.models import User
 from .models import UserProfile
+
+# فرمت پلاک: XX حرف YYY ایران ZZ  (مثال: 12 الف 345 ایران 67)
+PLATE_PATTERN = re.compile(r"^(\d{2})\s+([\u0600-\u06FF]+)\s+(\d{3})\s+ایران\s+(\d{2})$")
+
+MIN_PREFIX = 11
+MIN_MIDDLE = 111
+MIN_SUFFIX = 10
 
 
 class TariffSerializer(serializers.ModelSerializer):
@@ -46,7 +55,34 @@ class VehicleTrafficSerializer(serializers.ModelSerializer):
         value = value.strip()
         if not value:
             raise serializers.ValidationError("پلاک خودرو الزامی است.")
-        return value
+
+        # نرمال‌سازی فاصله‌های چندگانه
+        normalized = re.sub(r"\s+", " ", value)
+
+        match = PLATE_PATTERN.match(normalized)
+        if not match:
+            raise serializers.ValidationError(
+                "فرمت پلاک نامعتبر است. مثال صحیح: 12 الف 345 ایران 67"
+            )
+
+        prefix, _letter, middle, suffix = match.groups()
+
+        if int(prefix) < MIN_PREFIX:
+            raise serializers.ValidationError(
+                f"دو رقم اول پلاک نمی‌تواند کمتر از {MIN_PREFIX} باشد."
+            )
+
+        if int(middle) < MIN_MIDDLE:
+            raise serializers.ValidationError(
+                f"سه رقم وسط پلاک نمی‌تواند کمتر از {MIN_MIDDLE} باشد."
+            )
+
+        if int(suffix) < MIN_SUFFIX:
+            raise serializers.ValidationError(
+                f"دو رقم شناسه ایران نمی‌تواند کمتر از {MIN_SUFFIX} باشد."
+            )
+
+        return normalized
 
     def get_entry_time_formatted(self, obj):
         return timezone.localtime(obj.entry_time).strftime("%H:%M") if obj.entry_time else ""

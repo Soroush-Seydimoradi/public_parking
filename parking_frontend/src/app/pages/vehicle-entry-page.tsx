@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { apiFetch, apiGet } from "../lib/api";
 import { ParkingSpotCard } from "../components/parking-spot-card";
 import type { ParkingSpot } from "../lib/mock-data";
+import { validatePersianPlate } from "../lib/utils";
 import { Car, Clock, User, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -89,6 +90,12 @@ export function VehicleEntryPage() {
       return;
     }
 
+    const plateError = validatePersianPlate(licensePlate);
+    if (plateError) {
+      toast.error(plateError);
+      return;
+    }
+
     const selectedSpotRecord = parkingSpots.find((spot) => spot.number === selectedSpot);
     if (!selectedSpotRecord) {
       toast.error("جایگاه انتخاب‌شده معتبر نیست");
@@ -162,7 +169,7 @@ export function VehicleEntryPage() {
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  پلاک را به صورت کامل و با فاصله وارد کنید
+                  پلاک را به صورت کامل و با فاصله وارد کنید (دو رقم اول حداقل ۱۱، سه رقم وسط حداقل ۱۱۱ و دو رقم آخر حداقل ۱۰ باشد)
                 </p>
               </div>
 
